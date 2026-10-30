@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#131b2e" />
+      <stop offset="100%" stop-color="#090d14" />
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="55%" stop-color="#00e5ff" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="pulseGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#e6edf5" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+
+  <!-- App Tile Background -->
+  <rect width="512" height="512" rx="116" fill="url(#bgGrad)" />
+
+  <!-- Subtle Inner Track Ring -->
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#1e293b" stroke-width="28" />
+
+  <!-- Active Biometric & Macro Progress Arc -->
+  <circle cx="256" cy="256" r="176" fill="none" stroke="url(#ringGrad)" stroke-width="28"
+    stroke-linecap="round" stroke-dasharray="860 1106" transform="rotate(-125 256 256)" />
+
+  <!-- Central Biometric Trend / Pulse Line -->
+  <path d="M 136 264 L 194 264 L 224 192 L 262 332 L 298 228 L 324 264 L 376 264"
+    fill="none" stroke="url(#pulseGrad)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Accent Node Dot -->
+  <circle cx="376" cy="264" r="14" fill="#10b981" />
+</svg>

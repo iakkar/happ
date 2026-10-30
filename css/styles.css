@@ -1,0 +1,1081 @@
+/* ==========================================================================
+   HAPP — Mobile-First Pure Dark Mode Fitness, Macro & Biometrics UI
+   Inspired by Huawei Health & Garmin Connect Dark Theme
+   ========================================================================== */
+
+:root {
+  --font-sans: 'DM Sans', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --bg-obsidian: #090d14;
+  --bg-surface: #121824;
+  --bg-surface-elevated: #182030;
+  --bg-surface-hover: #1f293d;
+  --border-subtle: rgba(148, 163, 184, 0.1);
+  --border-glow: rgba(56, 189, 248, 0.32);
+
+  --text-primary: #e6edf5;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --accent-cyan: #38bdf8;
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-orange: #f97316;
+  --accent-purple: #a855f7;
+  --accent-pink: #ec4899;
+  --accent-danger: #ef4444;
+  --accent-blue: #38bdf8;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.38);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background-color: var(--bg-obsidian);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color-scheme: dark;
+}
+
+/* Mobile-First Centered Frame (looks native on phone, sleek container on desktop) */
+.app-shell {
+  max-width: 500px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  position: relative;
+  background: radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.06) 0%, transparent 55%), var(--bg-obsidian);
+}
+
+/* ==========================================================================
+   Sticky Top Header & Calendar Date Strip
+   ========================================================================== */
+.top-calendar-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(11, 15, 24, 0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 12px 14px 10px;
+}
+
+.calendar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.date-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.date-main-label {
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.date-sub-badge {
+  font-size: 0.73rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 229, 255, 0.14);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+}
+
+.calendar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-btn {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover:not(:disabled), .icon-btn:active:not(:disabled) {
+  border-color: var(--accent-cyan);
+  background: var(--bg-surface-hover);
+}
+
+.icon-btn:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.day-pill {
+  background: var(--bg-surface);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 6px 2px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.day-pill.future-disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.day-pill .dow {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  display: block;
+}
+
+.day-pill .dom {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  display: block;
+}
+
+.day-pill .day-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin: 3px auto 0;
+  background: transparent;
+}
+
+.day-pill.has-data .day-dot {
+  background: var(--accent-emerald);
+}
+
+.day-pill.active {
+  background: linear-gradient(145deg, rgba(0, 229, 255, 0.2), rgba(16, 185, 129, 0.14));
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.18);
+}
+
+.day-pill.active .dow,
+.day-pill.active .dom {
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   Main Content Cards (Garmin / Huawei Health Card Stack)
+   ========================================================================== */
+.view-container {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.h-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.h-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.h-card-header > div:first-child {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.h-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.h-card-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.badge-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.badge-pill.cyan {
+  color: var(--accent-cyan);
+  border-color: rgba(0, 229, 255, 0.3);
+  background: rgba(0, 229, 255, 0.1);
+}
+
+.badge-pill.emerald {
+  color: var(--accent-emerald);
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.badge-pill.amber {
+  color: var(--accent-amber);
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* ==========================================================================
+   Section 1: Morning Weigh-In & 10-Metric Smart Scale Grid
+   ========================================================================== */
+.weighin-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.weighin-main-val {
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--accent-cyan);
+  line-height: 1.15;
+}
+
+.weighin-main-val span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.weighin-trend-line {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.biometrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bio-tile {
+  min-width: 0;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bio-tile:hover, .bio-tile:active {
+  border-color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+.bio-tile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.bio-tile-val {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.bio-tile-val small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+.bio-tile-tag {
+  font-size: 0.64rem;
+  font-weight: 600;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+/* Huawei-style Range Spectrum Bar */
+.spectrum-bar {
+  display: flex;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  gap: 2px;
+  margin: 8px 0 4px;
+}
+
+.spectrum-seg {
+  flex: 1;
+  height: 100%;
+}
+
+/* ==========================================================================
+   Section 2: Hydration (Circle Ring Around Cup + / - Controls)
+   ========================================================================== */
+.hydration-circle-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 6px 0 8px;
+}
+
+.hydration-step-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 1.45rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.hydration-step-btn:hover:not(:disabled), .hydration-step-btn:active:not(:disabled) {
+  border-color: var(--accent-blue);
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--accent-blue);
+  transform: scale(1.04);
+}
+
+.hydration-step-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.hydration-ring-wrap {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hydration-ring-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+}
+
+.hydration-ring-center .cup-svg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent-blue);
+  margin-bottom: 2px;
+}
+
+.hydration-ring-center .hyd-ml-main {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.hydration-ring-center .hyd-cups-sub {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.hydration-goal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Section 3: Macros, Fasting & Meals Card
+   ========================================================================== */
+.macro-hero-grid {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.kcal-ring-wrap {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kcal-ring-center {
+  position: absolute;
+  text-align: center;
+}
+
+.kcal-ring-center .kcal-num {
+  font-size: 1.22rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: block;
+  line-height: 1.1;
+}
+
+.kcal-ring-center .kcal-lbl {
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.macro-bars-col {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+}
+
+.macro-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.macro-bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.macro-track {
+  height: 7px;
+  background: rgba(148, 163, 184, 0.14);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.macro-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.25s ease;
+}
+
+.fasting-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(168, 85, 247, 0.1);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  font-size: 0.8rem;
+}
+
+.meal-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.meal-action-btn {
+  min-width: 0;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  color: var(--text-primary);
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.meal-action-btn:hover, .meal-action-btn:active {
+  border-color: var(--accent-cyan);
+  background: var(--bg-surface-hover);
+}
+
+.meal-action-btn.ai-highlight {
+  background: linear-gradient(145deg, rgba(0, 229, 255, 0.16), rgba(168, 85, 247, 0.16));
+  border-color: rgba(0, 229, 255, 0.4);
+}
+
+.meal-slot-group {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.meal-slot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.meal-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  margin-bottom: 6px;
+  border: 1px solid transparent;
+}
+
+.meal-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.meal-item-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meal-item-meta {
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.meal-item-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.meal-item-kcal {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.delete-mini-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 4px;
+}
+
+.delete-mini-btn:hover {
+  color: var(--accent-danger);
+}
+
+/* ==========================================================================
+   Section 4: Sleep & Readiness Biofeedback
+   ========================================================================== */
+.readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.readiness-box {
+  min-width: 0;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.readiness-box .r-val {
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 3px;
+}
+
+.readiness-box .r-lbl {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Charts & Segmented W | M | Y Controls
+   ========================================================================== */
+.segmented-tabs {
+  display: inline-flex;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  gap: 3px;
+}
+
+.seg-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.seg-btn.active {
+  background: var(--accent-cyan);
+  color: #041016;
+}
+
+.metric-chip-scroller {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  scrollbar-width: none;
+}
+
+.metric-chip-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.metric-chip {
+  white-space: nowrap;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.metric-chip.active {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.12);
+}
+
+.chart-canvas-wrap {
+  width: 100%;
+  height: 215px;
+  position: relative;
+  margin: 8px 0;
+}
+
+.chart-canvas-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.stats-strip-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.stat-mini-card {
+  min-width: 0;
+  background: var(--bg-surface-elevated);
+  border-radius: var(--radius-sm);
+  padding: 8px 6px;
+  text-align: center;
+  border: 1px solid var(--border-subtle);
+}
+
+.stat-mini-card .s-lbl {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.stat-mini-card .s-val {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Bottom Navigation Bar (Mobile App Feel)
+   ========================================================================== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 500px;
+  background: rgba(11, 15, 24, 0.95);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-subtle);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 8px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.nav-tab .nav-svg {
+  width: 19px;
+  height: 19px;
+}
+
+.nav-tab.active {
+  color: var(--accent-cyan);
+}
+
+/* ==========================================================================
+   Modals & Bottom Sheets
+   ========================================================================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(6px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-backdrop.hidden {
+  display: none;
+}
+
+.modal-sheet {
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 24px 24px 0 0;
+  padding: 18px 16px 28px;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.modal-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* Forms & Inputs */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.form-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.form-label {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.3;
+}
+
+.form-label span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+  text-overflow: ellipsis;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--accent-cyan);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-cyan), #00b4d8);
+  color: #031117;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 11px 16px;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.15s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.92;
+}
+
+.btn-secondary {
+  background: var(--bg-surface-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  font-weight: 600;
+  font-size: 0.84rem;
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+/* Progress Photos Grid & Side-by-Side */
+.photo-compare-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+/* Responsive Breakpoints for Narrow Screens */
+@media (max-width: 390px) {
+  .view-container {
+    padding: 10px;
+    gap: 12px;
+  }
+
+  .h-card {
+    padding: 13px;
+  }
+
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .biometrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .meal-quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-strip-4,
+  .readiness-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .macro-hero-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .macro-bars-col {
+    width: 100%;
+  }
+}
+
+.photo-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.photo-card img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-overlay-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  background: rgba(7, 10, 15, 0.85);
+  backdrop-filter: blur(6px);
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.toast-banner {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--accent-cyan);
+  color: var(--text-primary);
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 600;
+  z-index: 200;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+}
