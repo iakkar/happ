@@ -22,10 +22,10 @@ export const METRIC_DEFINITIONS = [
     color: '#38bdf8',
     autoCalculated: true,
     ranges: [
-      { label: 'Low', max: 18.5, color: '#38bdf8' },
+      { label: 'Low', max: 18.4, color: '#38bdf8' },
       { label: 'Normal', max: 24.9, color: '#10b981' },
       { label: 'High', max: 29.9, color: '#f59e0b' },
-      { label: 'Very High', max: 45, color: '#ef4444' }
+      { label: 'Obese', max: 50, color: '#ef4444' }
     ],
     description: 'Body Mass Index — automatically calculated from your Weight and Height.'
   },
@@ -38,10 +38,10 @@ export const METRIC_DEFINITIONS = [
     color: '#f59e0b',
     autoCalculated: false,
     ranges: [
-      { label: 'Athletic', max: 14, color: '#00e5ff' },
-      { label: 'Fit', max: 18, color: '#10b981' },
-      { label: 'Average', max: 24, color: '#f59e0b' },
-      { label: 'High', max: 40, color: '#ef4444' }
+      { label: 'Athletic', max: 13.9, color: '#00e5ff' },
+      { label: 'Normal', max: 20.9, color: '#10b981' },
+      { label: 'Elevated', max: 25.9, color: '#f59e0b' },
+      { label: 'High', max: 50, color: '#ef4444' }
     ],
     description: 'Percentage of total body mass composed of fat tissue.'
   },
@@ -54,10 +54,9 @@ export const METRIC_DEFINITIONS = [
     color: '#10b981',
     autoCalculated: false,
     ranges: [
-      { label: 'Low', max: 25, color: '#f59e0b' },
-      { label: 'Normal', max: 33, color: '#38bdf8' },
-      { label: 'High', max: 40, color: '#10b981' },
-      { label: 'Elite', max: 55, color: '#00e5ff' }
+      { label: 'Low', max: 26.9, color: '#f59e0b' },
+      { label: 'Normal', max: 39.9, color: '#10b981' },
+      { label: 'High', max: 60, color: '#00e5ff' }
     ],
     description: 'Skeletal muscle mass in kilograms responsible for strength and locomotion.'
   },
@@ -71,8 +70,8 @@ export const METRIC_DEFINITIONS = [
     autoCalculated: true,
     adjustable: true,
     ranges: [
-      { label: 'Optimal', max: 9, color: '#10b981' },
-      { label: 'Elevated', max: 14, color: '#f59e0b' },
+      { label: 'Normal', max: 9.5, color: '#10b981' },
+      { label: 'Elevated', max: 14.5, color: '#f59e0b' },
       { label: 'High', max: 30, color: '#ef4444' }
     ],
     description: 'Auto-calculated visceral fat rating (1–30 scale), also manually adjustable to match your smart scale.'
@@ -86,6 +85,11 @@ export const METRIC_DEFINITIONS = [
     color: '#a855f7',
     autoCalculated: true,
     adjustable: true,
+    ranges: [
+      { label: 'Low', max: 1399, color: '#f59e0b' },
+      { label: 'Normal', max: 2250, color: '#10b981' },
+      { label: 'High', max: 4000, color: '#00e5ff' }
+    ],
     description: 'Basal Metabolic Rate — auto-calculated via Katch-McArdle / Mifflin-St Jeor, or manually overridden.'
   },
   {
@@ -97,9 +101,9 @@ export const METRIC_DEFINITIONS = [
     color: '#06b6d4',
     autoCalculated: false,
     ranges: [
-      { label: 'Low', max: 50, color: '#f59e0b' },
-      { label: 'Optimal', max: 65, color: '#10b981' },
-      { label: 'High', max: 80, color: '#00e5ff' }
+      { label: 'Low', max: 49.9, color: '#f59e0b' },
+      { label: 'Normal', max: 65.0, color: '#10b981' },
+      { label: 'High', max: 80.0, color: '#00e5ff' }
     ],
     description: 'Total body water percentage.'
   },
@@ -112,9 +116,9 @@ export const METRIC_DEFINITIONS = [
     color: '#cbd5e1',
     autoCalculated: false,
     ranges: [
-      { label: 'Low', max: 2.5, color: '#f59e0b' },
-      { label: 'Normal', max: 3.6, color: '#10b981' },
-      { label: 'High', max: 5.0, color: '#00e5ff' }
+      { label: 'Low', max: 1.89, color: '#f59e0b' },
+      { label: 'Normal', max: 3.40, color: '#10b981' },
+      { label: 'High', max: 5.00, color: '#00e5ff' }
     ],
     description: 'Bone mineral content (BMC) in kilograms.'
   },
@@ -127,9 +131,9 @@ export const METRIC_DEFINITIONS = [
     color: '#ec4899',
     autoCalculated: false,
     ranges: [
-      { label: 'Low', max: 16, color: '#f59e0b' },
-      { label: 'Optimal', max: 20, color: '#10b981' },
-      { label: 'High', max: 28, color: '#00e5ff' }
+      { label: 'Low', max: 15.9, color: '#f59e0b' },
+      { label: 'Normal', max: 20.0, color: '#10b981' },
+      { label: 'High', max: 28.0, color: '#00e5ff' }
     ],
     description: 'Body protein percentage indicating cellular nutrition and muscle tone.'
   },
@@ -141,6 +145,11 @@ export const METRIC_DEFINITIONS = [
     decimals: 1,
     color: '#22c55e',
     autoCalculated: false,
+    ranges: [
+      { label: 'Low', max: 44.9, color: '#f59e0b' },
+      { label: 'Normal', max: 70.0, color: '#10b981' },
+      { label: 'High', max: 100.0, color: '#00e5ff' }
+    ],
     description: 'Total muscle mass in kilograms (skeletal + smooth + cardiac).'
   }
 ];
@@ -223,7 +232,7 @@ export function estimateSmartScaleComposition(weightKg, bodyFatPct, profile) {
     : Math.round((1.20 * bmi + 0.23 * profile.age - (profile.sex === 'male' ? 16.2 : 5.4)) * 10) / 10;
 
   const lbm = weightKg * (1 - bf / 100);
-  const boneMineral = Math.round((lbm * 0.048) * 100) / 100;
+  const boneMineral = Math.round((lbm * 0.033) * 100) / 100;
   const muscleMass = Math.round((lbm - boneMineral) * 10) / 10;
   const skeletalMuscle = Math.round((lbm * 0.54) * 10) / 10;
   const bodyWater = Math.round(((100 - bf) * 0.725) * 10) / 10;
