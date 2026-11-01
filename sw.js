@@ -4,7 +4,7 @@
  * appear immediately when online, while working 100% offline without internet.
  */
 
-const CACHE_NAME = 'happ-pwa-v1';
+const CACHE_NAME = 'happ-pwa-v2';
 
 const APP_SHELL_ASSETS = [
   './',

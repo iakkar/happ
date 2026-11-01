@@ -35,6 +35,7 @@ import {
 import {
   compressImageFile,
   analyzeMealWithGemini,
+  analyzeScaleScreenshotWithGemini,
   testGeminiConnection,
   searchFoodCatalog
 } from './engines/ai-parser.js';
@@ -366,9 +367,14 @@ function renderMyDayView(container) {
           <div class="h-card-title">Morning Weigh-In & Biometrics</div>
           <div class="h-card-sub">Tap any metric for W·M·Y trends</div>
         </div>
-        <button class="icon-btn" id="btn-open-weighin-modal" style="border-color:var(--accent-cyan);color:var(--accent-cyan);">
-          + Log Scale
-        </button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="icon-btn" id="btn-scan-scale-screenshot" style="border-color:rgba(16,185,129,0.5);color:var(--accent-emerald);">
+            Scan Screenshot
+          </button>
+          <button class="icon-btn" id="btn-open-weighin-modal" style="border-color:var(--accent-cyan);color:var(--accent-cyan);">
+            + Log Scale
+          </button>
+        </div>
       </div>
 
       <div class="weighin-hero" id="hero-weight-box" style="cursor:pointer;">
@@ -436,9 +442,14 @@ function renderMyDayView(container) {
           <div class="h-card-title">Meals & Macro Coaching</div>
           <div class="h-card-sub">${tdee.modeLabel} • Target ${tdee.calories} kcal</div>
         </div>
-        <button class="badge-pill ${rec.isTrainingDay ? 'emerald' : ''}" id="btn-toggle-training-day" style="cursor:pointer;">
-          ${rec.isTrainingDay ? 'Training Day' : 'Rest Day'}
-        </button>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <button class="icon-btn" id="btn-open-training-kcal-modal" style="padding:4px 9px;font-size:0.74rem;border-color:${tdee.trainingCalories > 0 ? 'var(--accent-amber)' : 'var(--border-subtle)'};color:${tdee.trainingCalories > 0 ? 'var(--accent-amber)' : 'var(--text-secondary)'};">
+            ${tdee.trainingCalories > 0 ? `+${tdee.trainingCalories} Training kcal` : '+ Training Kcal'}
+          </button>
+          <button class="badge-pill ${rec.isTrainingDay || tdee.trainingCalories > 0 ? 'emerald' : ''}" id="btn-toggle-training-day" style="cursor:pointer;">
+            ${rec.isTrainingDay || tdee.trainingCalories > 0 ? 'Training Day' : 'Rest Day'}
+          </button>
+        </div>
       </div>
 
       <!-- Opt-In Fasting Window Strip -->
@@ -491,8 +502,9 @@ function renderMyDayView(container) {
             </div>
           </div>
 
-          <div style="font-size:0.72rem;color:var(--text-secondary);display:flex;justify-content:space-between;padding-top:2px;">
+          <div style="font-size:0.72rem;color:var(--text-secondary);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding-top:2px;">
             <span>Eaten: <strong>${totals.calories} kcal</strong></span>
+            <span>Training: <strong style="color:${tdee.trainingCalories > 0 ? '#f59e0b' : 'inherit'};">${tdee.trainingCalories > 0 ? '+' + tdee.trainingCalories : '0'} kcal</strong></span>
             <span>TDEE: <strong>${tdee.tdee} kcal</strong></span>
           </div>
         </div>
@@ -583,8 +595,9 @@ function renderMyDayView(container) {
     </section>
   `;
 
-  // Wire up Card 1: Weigh-in Modal & Metric Drill-Downs
-  container.querySelector('#btn-open-weighin-modal')?.addEventListener('click', () => openWeighInModal());
+  // Wire up Card 1: Weigh-in Modal, Screenshot Scanner & Metric Drill-Downs
+  container.querySelector('#btn-open-weighin-modal')?.addEventListener('click', () => openWeighInModal(false));
+  container.querySelector('#btn-scan-scale-screenshot')?.addEventListener('click', () => openWeighInModal(true));
   container.querySelector('#hero-weight-box')?.addEventListener('click', () => openMetricDrillModal('weight'));
   container.querySelectorAll('[data-drill-metric]').forEach(tile => {
     tile.addEventListener('click', () => openMetricDrillModal(tile.getAttribute('data-drill-metric')));
@@ -617,6 +630,8 @@ function renderMyDayView(container) {
     renderApp();
     showToast(nextVal ? `Fast started at ${nextVal}` : 'Fast ended');
   });
+
+  container.querySelector('#btn-open-training-kcal-modal')?.addEventListener('click', () => openTrainingCaloriesModal());
 
   container.querySelector('#btn-toggle-training-day')?.addEventListener('click', async () => {
     await saveDailyRecord(state.selectedDate, { isTrainingDay: !rec.isTrainingDay });
@@ -1142,11 +1157,11 @@ function renderSettingsView(container) {
       <button class="btn-primary" id="btn-save-settings" style="margin-top:8px;">Save Settings</button>
     </section>
 
-    <!-- Demo Data Seeder & Backup Export/Import -->
+    <!-- Backup Export/Import -->
     <section class="h-card">
       <div class="h-card-header">
         <div>
-          <div class="h-card-title">Offline Data Backup & Demo Seed</div>
+          <div class="h-card-title">Offline Data Backup</div>
           <div class="h-card-sub">100% stored in your browser's IndexedDB</div>
         </div>
       </div>
@@ -1154,11 +1169,6 @@ function renderSettingsView(container) {
         <button class="btn-secondary" id="btn-export-backup" style="flex:1 1 140px;">Export JSON Backup</button>
         <button class="btn-secondary" id="btn-import-backup" style="flex:1 1 140px;">Import Backup</button>
         <input type="file" id="file-import-backup" accept=".json" style="display:none;" />
-      </div>
-      <div style="margin-top:10px;">
-        <button class="btn-secondary" id="btn-seed-demo-data" style="width:100%;border-color:rgba(0,229,255,0.35);color:var(--accent-cyan);">
-          Populate 30 Days of Sample Biometrics & Meals (Test Charts)
-        </button>
       </div>
     </section>
   `;
@@ -1254,13 +1264,6 @@ function renderSettingsView(container) {
     } catch (err) {
       showToast('Import failed: ' + err.message);
     }
-  });
-
-  container.querySelector('#btn-seed-demo-data')?.addEventListener('click', async () => {
-    await seedSample30Days();
-    await refreshState();
-    renderApp();
-    showToast('30 days of sample biometrics & meals populated');
   });
 }
 
@@ -1378,15 +1381,106 @@ function openFastingConfigModal() {
   });
 }
 
+// --- Modal: Training Calories Burned ---
+function openTrainingCaloriesModal() {
+  const rec = state.dayRecord;
+  const tdee = state.tdeeSummary;
+  const currentTrainKcal = Math.max(0, Math.round(Number(rec.trainingCalories) || 0));
+  const baseTarget = tdee.baseCalories || (tdee.calories - currentTrainKcal);
+
+  openModal(`
+    <div class="modal-header">
+      <div class="modal-title">Training Calories (${state.selectedDate})</div>
+      <button class="icon-btn" data-close-modal>&times;</button>
+    </div>
+
+    <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;">
+      Enter active workout / training calories burned today. These are automatically added to your daily calorie budget and macro tracking.
+    </p>
+
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Training Calories Burned (kcal)</label>
+        <input type="number" min="0" max="10000" step="10" class="form-input" id="inp-training-kcal" value="${currentTrainKcal || ''}" placeholder="e.g. 450" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Daily Target (kcal)</label>
+        <input type="number" class="form-input" id="inp-preview-total-kcal" value="${baseTarget + currentTrainKcal}" readonly style="opacity:0.85;" />
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" id="btn-clear-training-kcal" style="flex:1;">Reset (0 kcal)</button>
+      <button class="btn-primary" id="btn-save-training-kcal" style="flex:2;">Save Training Calories</button>
+    </div>
+  `, (sheet) => {
+    const trainInp = sheet.querySelector('#inp-training-kcal');
+    const previewInp = sheet.querySelector('#inp-preview-total-kcal');
+
+    trainInp.addEventListener('input', () => {
+      const val = Math.max(0, Math.min(10000, Math.round(Number(trainInp.value) || 0)));
+      previewInp.value = baseTarget + val;
+    });
+
+    sheet.querySelector('#btn-clear-training-kcal')?.addEventListener('click', async () => {
+      await saveDailyRecord(state.selectedDate, { trainingCalories: 0, isTrainingDay: false });
+      await refreshState();
+      closeModal();
+      renderApp();
+      showToast('Training calories reset to 0');
+    });
+
+    sheet.querySelector('#btn-save-training-kcal')?.addEventListener('click', async () => {
+      const kcal = Math.max(0, Math.min(10000, Math.round(Number(trainInp.value) || 0)));
+      await saveDailyRecord(state.selectedDate, {
+        trainingCalories: kcal,
+        isTrainingDay: kcal > 0 ? true : rec.isTrainingDay
+      });
+      await refreshState();
+      closeModal();
+      renderApp();
+      showToast(kcal > 0 ? `Added +${kcal} training kcal to daily target` : 'Training calories updated');
+    });
+  });
+}
+
 // --- Modal 1: Morning Weigh-In & 10-Metric Smart Scale Entry ---
-function openWeighInModal() {
+function openWeighInModal(autoTriggerScan = false) {
   const rec = state.dayRecord;
   const prof = state.profile;
+  const hasGeminiKey = Boolean(prof.geminiApiKey);
+  let pendingScreenshots = [];
 
   openModal(`
     <div class="modal-header">
       <div class="modal-title">Morning Weigh-In (${state.selectedDate})</div>
       <button class="icon-btn" data-close-modal>&times;</button>
+    </div>
+
+    <!-- Smart Scale Screenshot AI Scanner -->
+    <div style="background:var(--bg-surface-elevated);border:1px solid rgba(16,185,129,0.35);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;flex-wrap:wrap;">
+        <span style="font-size:0.78rem;font-weight:700;color:var(--accent-emerald);">
+          Import Weight Metrics from Screenshot(s)
+        </span>
+        <span class="badge-pill ${hasGeminiKey ? 'emerald' : 'amber'}" style="font-size:0.65rem;">
+          ${hasGeminiKey ? 'Gemini Vision Ready' : 'Add Gemini Key in Settings'}
+        </span>
+      </div>
+      <div style="font-size:0.73rem;color:var(--text-secondary);margin-bottom:8px;">
+        Upload 1 or 2+ screenshots from your smart scale app to auto-fill all metrics below.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label class="btn-secondary" style="flex:1;text-align:center;cursor:pointer;font-size:0.76rem;border-color:rgba(16,185,129,0.45);color:var(--accent-emerald);">
+          Select Scale Screenshot(s)
+          <input type="file" id="inp-scale-screenshots" accept="image/*" multiple style="display:none;" />
+        </label>
+        <button class="btn-secondary" id="btn-run-scale-ocr" style="display:none;font-size:0.76rem;border-color:var(--accent-cyan);color:var(--accent-cyan);">
+          Re-Scan
+        </button>
+      </div>
+      <div id="scale-screenshots-preview" style="display:none;gap:6px;margin-top:8px;overflow-x:auto;"></div>
+      <div id="scale-ocr-status" style="font-size:0.73rem;color:var(--text-secondary);margin-top:6px;display:none;"></div>
     </div>
 
     <div style="display:flex;gap:8px;margin-bottom:12px;">
@@ -1411,8 +1505,8 @@ function openWeighInModal() {
         <input type="number" step="0.1" class="form-input" id="inp-bodyFat" value="${rec.bodyFat ?? ''}" placeholder="e.g. 15.2" />
       </div>
       <div class="form-group">
-        <label class="form-label">4. Skeletal Muscle (%)</label>
-        <input type="number" step="0.1" class="form-input" id="inp-skeletalMuscle" value="${rec.skeletalMuscle ?? ''}" placeholder="e.g. 41.5" />
+        <label class="form-label">4. Skeletal Muscle (kg)</label>
+        <input type="number" step="0.1" class="form-input" id="inp-skeletalMuscle" value="${rec.skeletalMuscle ?? ''}" placeholder="e.g. 35.8" />
       </div>
 
       <div class="form-group">
@@ -1435,7 +1529,7 @@ function openWeighInModal() {
         <input type="number" step="0.1" class="form-input" id="inp-bodyWater" value="${rec.bodyWater ?? ''}" placeholder="e.g. 61.0" />
       </div>
       <div class="form-group">
-        <label class="form-label">8. Bone Mineral (kg)</label>
+        <label class="form-label">8. Bone Mineral Content (kg)</label>
         <input type="number" step="0.01" class="form-input" id="inp-boneMineral" value="${rec.boneMineral ?? ''}" placeholder="e.g. 3.25" />
       </div>
 
@@ -1456,6 +1550,10 @@ function openWeighInModal() {
     const bmiInput = sheet.querySelector('#inp-bmi');
     const vfInput = sheet.querySelector('#inp-visceralFat');
     const bmrInput = sheet.querySelector('#inp-bmr');
+    const screenshotInp = sheet.querySelector('#inp-scale-screenshots');
+    const previewBox = sheet.querySelector('#scale-screenshots-preview');
+    const ocrStatus = sheet.querySelector('#scale-ocr-status');
+    const rescanBtn = sheet.querySelector('#btn-run-scale-ocr');
 
     let vfManuallyEdited = Boolean(rec.visceralFatManual);
     let bmrManuallyEdited = Boolean(rec.bmrManual);
@@ -1483,6 +1581,71 @@ function openWeighInModal() {
 
     wInput.addEventListener('input', triggerLiveAutoCalc);
     bfInput.addEventListener('input', triggerLiveAutoCalc);
+
+    const runScreenshotExtraction = async () => {
+      if (!pendingScreenshots.length) return;
+      ocrStatus.style.display = 'block';
+      ocrStatus.style.color = 'var(--accent-cyan)';
+      ocrStatus.textContent = `Extracting metrics from ${pendingScreenshots.length} screenshot(s)...`;
+      rescanBtn.disabled = true;
+
+      try {
+        const extracted = await analyzeScaleScreenshotWithGemini({
+          apiKey: prof.geminiApiKey,
+          model: prof.geminiModel,
+          imageDataUrls: pendingScreenshots
+        });
+
+        if (extracted.usedModel && extracted.usedModel !== prof.geminiModel) {
+          await saveProfile({ geminiModel: extracted.usedModel });
+          state.profile.geminiModel = extracted.usedModel;
+        }
+
+        let filledCount = 0;
+        const fields = ['weight', 'bmi', 'bodyFat', 'skeletalMuscle', 'visceralFat', 'bmr', 'bodyWater', 'boneMineral', 'proteinPct', 'muscleMass'];
+        fields.forEach(k => {
+          if (extracted[k] != null) {
+            const el = sheet.querySelector(`#inp-${k}`);
+            if (el) {
+              el.value = extracted[k];
+              filledCount++;
+            }
+          }
+        });
+
+        if (extracted.visceralFat != null) vfManuallyEdited = true;
+        if (extracted.bmr != null) bmrManuallyEdited = true;
+        triggerLiveAutoCalc();
+
+        ocrStatus.style.color = 'var(--accent-emerald)';
+        ocrStatus.textContent = `Extracted ${filledCount} metric(s) from screenshot(s). Review & click Save below.`;
+        showToast(`Extracted ${filledCount} metrics from screenshot`);
+      } catch (err) {
+        ocrStatus.style.color = 'var(--accent-danger)';
+        ocrStatus.textContent = err.message;
+        showToast(err.message);
+      } finally {
+        rescanBtn.disabled = false;
+      }
+    };
+
+    screenshotInp?.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      pendingScreenshots = await Promise.all(files.map(f => compressImageFile(f, 1200, 0.85)));
+      previewBox.style.display = 'flex';
+      previewBox.innerHTML = pendingScreenshots.map(src =>
+        `<img src="${src}" style="height:68px;width:auto;border-radius:8px;border:1px solid var(--border-subtle);object-fit:cover;" />`
+      ).join('');
+      rescanBtn.style.display = 'inline-flex';
+      await runScreenshotExtraction();
+    });
+
+    rescanBtn?.addEventListener('click', () => runScreenshotExtraction());
+
+    if (autoTriggerScan) {
+      setTimeout(() => screenshotInp?.click(), 120);
+    }
 
     sheet.querySelector('#btn-copy-prev-day')?.addEventListener('click', () => {
       const prev = [...state.allRecords]
@@ -2197,26 +2360,32 @@ function openReadinessModal() {
 
     <div class="form-grid-2">
       <div class="form-group">
-        <label class="form-label">Sleep Duration (Hours)</label>
-        <input type="number" step="0.25" class="form-input" id="inp-sleep-hrs" value="${rec.sleepHours ?? ''}" placeholder="e.g. 7.5" />
+        <label class="form-label">Sleep Duration (0–24h)</label>
+        <input type="number" min="0" max="24" step="0.25" class="form-input" id="inp-sleep-hrs" value="${rec.sleepHours ?? ''}" placeholder="e.g. 7.5" />
       </div>
       <div class="form-group">
         <label class="form-label">Sleep Score (1–100)</label>
-        <input type="number" class="form-input" id="inp-sleep-score" value="${rec.sleepQuality ?? ''}" placeholder="e.g. 84" />
+        <input type="number" min="1" max="100" step="1" class="form-input" id="inp-sleep-score" value="${rec.sleepQuality ?? ''}" placeholder="1 to 100" />
       </div>
       <div class="form-group">
-        <label class="form-label">Energy Level (1–5)</label>
-        <input type="number" min="1" max="5" class="form-input" id="inp-energy" value="${rec.energy ?? ''}" placeholder="1 to 5" />
+        <label class="form-label">Energy / Readiness (1–5)</label>
+        <input type="number" min="1" max="5" step="1" class="form-input" id="inp-energy" value="${rec.energy ?? ''}" placeholder="1 to 5" />
       </div>
       <div class="form-group">
         <label class="form-label">Muscle Soreness (1–5)</label>
-        <input type="number" min="1" max="5" class="form-input" id="inp-soreness" value="${rec.soreness ?? ''}" placeholder="1 to 5" />
+        <input type="number" min="1" max="5" step="1" class="form-input" id="inp-soreness" value="${rec.soreness ?? ''}" placeholder="1 to 5" />
       </div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Daily Step Count</label>
-      <input type="number" class="form-input" id="inp-steps" value="${rec.steps ?? ''}" placeholder="e.g. 9500" />
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Daily Step Count</label>
+        <input type="number" min="0" max="200000" step="1" class="form-input" id="inp-steps" value="${rec.steps ?? ''}" placeholder="e.g. 9500" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Training Calories (kcal)</label>
+        <input type="number" min="0" max="10000" step="10" class="form-input" id="inp-readiness-train-kcal" value="${rec.trainingCalories || ''}" placeholder="e.g. 450" />
+      </div>
     </div>
 
     <div class="form-group">
@@ -2226,17 +2395,45 @@ function openReadinessModal() {
 
     <button class="btn-primary" id="btn-save-readiness">Save Sleep & Readiness</button>
   `, (sheet) => {
+    const bindClamp = (selector, min, max, isInt = false) => {
+      const el = sheet.querySelector(selector);
+      if (!el) return;
+      el.addEventListener('change', () => {
+        if (el.value === '') return;
+        let n = Number(el.value);
+        if (isNaN(n)) {
+          el.value = '';
+          return;
+        }
+        if (isInt) n = Math.round(n);
+        el.value = Math.max(min, Math.min(max, n));
+      });
+    };
+
+    bindClamp('#inp-sleep-hrs', 0, 24, false);
+    bindClamp('#inp-sleep-score', 1, 100, true);
+    bindClamp('#inp-energy', 1, 5, true);
+    bindClamp('#inp-soreness', 1, 5, true);
+    bindClamp('#inp-steps', 0, 200000, true);
+    bindClamp('#inp-readiness-train-kcal', 0, 10000, true);
+
     sheet.querySelector('#btn-save-readiness')?.addEventListener('click', async () => {
-      const readNum = (id) => {
+      const readClamped = (id, min, max, isInt = false) => {
         const v = sheet.querySelector(id)?.value;
-        return v !== '' && v != null ? Number(v) : null;
+        if (v === '' || v == null || isNaN(Number(v))) return null;
+        let n = Number(v);
+        if (isInt) n = Math.round(n);
+        return Math.max(min, Math.min(max, n));
       };
+      const trainKcal = readClamped('#inp-readiness-train-kcal', 0, 10000, true) || 0;
       await saveDailyRecord(state.selectedDate, {
-        sleepHours: readNum('#inp-sleep-hrs'),
-        sleepQuality: readNum('#inp-sleep-score'),
-        energy: readNum('#inp-energy'),
-        soreness: readNum('#inp-soreness'),
-        steps: readNum('#inp-steps'),
+        sleepHours: readClamped('#inp-sleep-hrs', 0, 24, false),
+        sleepQuality: readClamped('#inp-sleep-score', 1, 100, true),
+        energy: readClamped('#inp-energy', 1, 5, true),
+        soreness: readClamped('#inp-soreness', 1, 5, true),
+        steps: readClamped('#inp-steps', 0, 200000, true),
+        trainingCalories: trainKcal,
+        isTrainingDay: trainKcal > 0 ? true : rec.isTrainingDay,
         notes: sheet.querySelector('#inp-day-notes').value.trim()
       });
       await refreshState();
@@ -2312,75 +2509,6 @@ function openPhotoUploadModal() {
       showToast('Progress photo saved');
     });
   });
-}
-
-// ============================================================================
-// Sample 30-Day Data Seeder (For Instant Testing of W | M | Y Charts)
-// ============================================================================
-async function seedSample30Days() {
-  const prof = await getProfile();
-  const today = new Date();
-  let weight = 80.2;
-  let bodyFat = 16.8;
-
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dateStr = toLocalDateStr(d);
-
-    weight = Math.round((weight - 0.05 + (Math.sin(i * 1.3) * 0.25)) * 10) / 10;
-    bodyFat = Math.round((bodyFat - 0.03 + (Math.cos(i) * 0.08)) * 10) / 10;
-
-    const est = estimateSmartScaleComposition(weight, bodyFat, prof);
-    await saveDailyRecord(dateStr, {
-      weight,
-      ...est,
-      cups: 8 + (i % 4),
-      sleepHours: Math.round((7.0 + (i % 3) * 0.5) * 10) / 10,
-      sleepQuality: 78 + (i % 15),
-      energy: 3 + (i % 3),
-      soreness: 2 + (i % 3),
-      steps: 8200 + (i % 6) * 850,
-      isTrainingDay: i % 2 === 0
-    });
-
-    const existingMeals = await getMealsByDate(dateStr);
-    if (existingMeals.length === 0) {
-      await addMealLog({
-        date: dateStr,
-        timestamp: '12:30',
-        mealSlot: 'Lunch',
-        name: 'Chicken Breast & Jasmine Rice Bowl',
-        calories: 680,
-        protein: 58,
-        carbs: 78,
-        fat: 14,
-        source: 'saved_meal'
-      });
-      await addMealLog({
-        date: dateStr,
-        timestamp: '16:30',
-        mealSlot: 'Post-Workout',
-        name: 'Whey Isolate + Greek Yogurt & Berries',
-        calories: 390,
-        protein: 45,
-        carbs: 36,
-        fat: 6,
-        source: 'food_db'
-      });
-      await addMealLog({
-        date: dateStr,
-        timestamp: '19:45',
-        mealSlot: 'Dinner',
-        name: 'Grilled Salmon, Potatoes & Olive Oil Salad',
-        calories: 890 + (i % 3) * 70,
-        protein: 54,
-        carbs: 72,
-        fat: 38,
-        source: 'ai_vision'
-      });
-    }
-  }
 }
 
 // ============================================================================

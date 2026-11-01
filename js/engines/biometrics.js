@@ -49,17 +49,17 @@ export const METRIC_DEFINITIONS = [
     key: 'skeletalMuscle',
     label: 'Skeletal Muscle',
     shortLabel: 'Skel. Muscle',
-    unit: '%',
+    unit: 'kg',
     decimals: 1,
     color: '#10b981',
     autoCalculated: false,
     ranges: [
-      { label: 'Low', max: 33, color: '#f59e0b' },
-      { label: 'Normal', max: 39, color: '#38bdf8' },
-      { label: 'High', max: 46, color: '#10b981' },
-      { label: 'Elite', max: 60, color: '#00e5ff' }
+      { label: 'Low', max: 25, color: '#f59e0b' },
+      { label: 'Normal', max: 33, color: '#38bdf8' },
+      { label: 'High', max: 40, color: '#10b981' },
+      { label: 'Elite', max: 55, color: '#00e5ff' }
     ],
-    description: 'Skeletal muscle percentage responsible for strength and locomotion.'
+    description: 'Skeletal muscle mass in kilograms responsible for strength and locomotion.'
   },
   {
     key: 'visceralFat',
@@ -105,8 +105,8 @@ export const METRIC_DEFINITIONS = [
   },
   {
     key: 'boneMineral',
-    label: 'Bone Mineral',
-    shortLabel: 'Bone Mass',
+    label: 'Bone Mineral Content',
+    shortLabel: 'Bone Mineral',
     unit: 'kg',
     decimals: 2,
     color: '#cbd5e1',
@@ -116,7 +116,7 @@ export const METRIC_DEFINITIONS = [
       { label: 'Normal', max: 3.6, color: '#10b981' },
       { label: 'High', max: 5.0, color: '#00e5ff' }
     ],
-    description: 'Bone mineral content in kilograms.'
+    description: 'Bone mineral content (BMC) in kilograms.'
   },
   {
     key: 'proteinPct',
@@ -225,7 +225,7 @@ export function estimateSmartScaleComposition(weightKg, bodyFatPct, profile) {
   const lbm = weightKg * (1 - bf / 100);
   const boneMineral = Math.round((lbm * 0.048) * 100) / 100;
   const muscleMass = Math.round((lbm - boneMineral) * 10) / 10;
-  const skeletalMuscle = Math.round(((lbm * 0.54) / weightKg) * 1000) / 10;
+  const skeletalMuscle = Math.round((lbm * 0.54) * 10) / 10;
   const bodyWater = Math.round(((100 - bf) * 0.725) * 10) / 10;
   const proteinPct = Math.round(((100 - bf) * 0.215) * 10) / 10;
 
@@ -336,29 +336,43 @@ export function calculateAdaptiveTDEE(dailyRecords, allMeals, profile, targetDat
 
   // Compute Daily Calorie & Macro Targets
   const dayRecord = dailyRecords.find(r => r.date === targetDate);
-  const isTrainingDay = Boolean(dayRecord?.isTrainingDay);
+  const trainingCalories = Math.max(0, Math.round(Number(dayRecord?.trainingCalories) || 0));
+  const isTrainingDay = Boolean(dayRecord?.isTrainingDay || trainingCalories > 0);
 
   if (profile.manualOverrideEnabled) {
+    const baseManualCalories = Number(profile.manualCalories) || 2200;
+    const effectiveCalories = baseManualCalories + trainingCalories;
+    const baseProtein = Number(profile.manualProtein) || 170;
+    const baseCarbs = Number(profile.manualCarbs) || 220;
+    const baseFat = Number(profile.manualFat) || 70;
     return {
-      tdee: adaptiveTdee,
+      tdee: adaptiveTdee + trainingCalories,
+      baseTdee: adaptiveTdee,
       bmr: baseBmr,
       avgDailyIntake,
       weeklyWeightTrendDelta,
       confidence,
       isTrainingDay,
-      calories: Number(profile.manualCalories) || 2200,
-      protein: Number(profile.manualProtein) || 170,
-      carbs: Number(profile.manualCarbs) || 220,
-      fat: Number(profile.manualFat) || 70,
-      modeLabel: 'Manual Override'
+      trainingCalories,
+      baseCalories: baseManualCalories,
+      calories: effectiveCalories,
+      protein: baseProtein,
+      carbs: baseCarbs + Math.round(trainingCalories / 4),
+      fat: baseFat,
+      modeLabel: trainingCalories > 0
+        ? `Manual + Training (+${trainingCalories} kcal)`
+        : 'Manual Override'
     };
   }
 
   // Goal delta from weeklyRateKg (e.g., -0.5 kg/wk = -550 kcal/day)
   const goalDailyDelta = Math.round(((Number(profile.weeklyRateKg) || 0) * 7700) / 7);
-  let targetCalories = adaptiveTdee + goalDailyDelta;
+  const baseTargetCalories = Math.max(1200, Math.round(adaptiveTdee + goalDailyDelta));
+  let targetCalories = baseTargetCalories;
 
-  if (profile.carbCyclingEnabled) {
+  if (trainingCalories > 0) {
+    targetCalories = baseTargetCalories + trainingCalories;
+  } else if (profile.carbCyclingEnabled) {
     const boost = Number(profile.trainingDayCalorieBoost) || 200;
     targetCalories += isTrainingDay ? boost : -Math.round(boost * 0.65);
   }
@@ -371,11 +385,17 @@ export function calculateAdaptiveTDEE(dailyRecords, allMeals, profile, targetDat
   const proteinGrams = Math.round(refMass * (Number(profile.proteinPerKg) || 2.0));
   const proteinKcal = proteinGrams * 4;
 
-  const remainingKcal = Math.max(400, targetCalories - proteinKcal);
   const fatPct = Math.max(15, Math.min(60, Number(profile.fatSharePct) || 28)) / 100;
-  const fatKcal = targetCalories * fatPct;
+  const fatKcal = baseTargetCalories * fatPct;
   const fatGrams = Math.max(35, Math.round(fatKcal / 9));
   const carbGrams = Math.max(30, Math.round((targetCalories - proteinKcal - fatGrams * 9) / 4));
+
+  let modeLabel = 'Adaptive Coaching';
+  if (trainingCalories > 0) {
+    modeLabel = `Training (+${trainingCalories} kcal burned)`;
+  } else if (profile.carbCyclingEnabled) {
+    modeLabel = isTrainingDay ? 'Training Day (+Carb/Kcal)' : 'Rest Day (Baseline)';
+  }
 
   return {
     tdee: adaptiveTdee,
@@ -384,12 +404,12 @@ export function calculateAdaptiveTDEE(dailyRecords, allMeals, profile, targetDat
     weeklyWeightTrendDelta,
     confidence,
     isTrainingDay,
+    trainingCalories,
+    baseCalories: baseTargetCalories,
     calories: targetCalories,
     protein: proteinGrams,
     carbs: carbGrams,
     fat: fatGrams,
-    modeLabel: profile.carbCyclingEnabled
-      ? (isTrainingDay ? 'Training Day (+Carb/Kcal)' : 'Rest Day (Baseline)')
-      : 'Adaptive Coaching'
+    modeLabel
   };
 }

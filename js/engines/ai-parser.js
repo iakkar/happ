@@ -225,6 +225,155 @@ Ensure calories, protein, carbs, and fat are accurate numbers. Do not include ma
 }
 
 /**
+ * Analyzes 1 or more Smart Scale App Screenshots using Gemini Vision API
+ * and extracts the 10 biometric fields (Weight, BMI, Body Fat %, Skeletal Muscle in kg,
+ * Visceral Fat, BMR, Body Water %, Bone Mineral Content in kg, Protein %, Muscle Mass in kg).
+ */
+export async function analyzeScaleScreenshotWithGemini({
+  apiKey,
+  model = 'gemini-3.1-pro-preview',
+  imageDataUrls = []
+}) {
+  const cleanKey = (apiKey || '').trim();
+  if (!cleanKey) {
+    throw new Error('Please add your Gemini API Key in Profile & AI Settings to scan scale screenshots.');
+  }
+
+  const images = (Array.isArray(imageDataUrls) ? imageDataUrls : [imageDataUrls]).filter(Boolean);
+  if (images.length === 0) {
+    throw new Error('Please select at least one smart scale screenshot.');
+  }
+
+  const systemInstruction = `You are a precision biometrics OCR & smart scale report parser (optimized for Huawei Health and smart scale screenshots).
+Analyze the provided smart scale screenshot(s) ("Body measurement data" or "Weight" screen) and extract the 10 body composition metrics.
+Return ONLY valid JSON matching this exact schema (use null for any metric not visible in the screenshot(s)):
+{
+  "weight": 101.0,
+  "bmi": 31.9,
+  "bodyFat": 30.2,
+  "skeletalMuscle": 38.0,
+  "visceralFat": 17.5,
+  "bmr": 2096,
+  "bodyWater": 51.1,
+  "boneMineral": 2.30,
+  "proteinPct": 16.4,
+  "muscleMass": 68.1
+}
+
+CRITICAL PARSING RULES FOR HUAWEI HEALTH & EUROPEAN NUMBER FORMATS:
+1. Comma Decimal vs. Dot Thousands Separator:
+   - Screenshots often use European formatting where comma "," is the decimal point (e.g., "101,0 kg" = 101.0, "31,9" = 31.9, "2,30 kg" = 2.30) and period "." is the thousands separator (e.g., "2.096 kcal/d" = 2096).
+   - Output all JSON numbers using standard dot decimals and NO thousands separators (e.g., bmr: 2096, NEVER 2.096).
+2. Ignore Change/Delta Badges:
+   - Ignore small green/red comparison arrows next to values (such as "↓ 0,1", "↑ 0,1", or "0,0 Compared to last time"). Always extract the primary metric number.
+3. Top Metric Tiles vs. Bottom "Body composition" Ring Card:
+   - For "bodyFat" (%), "bodyWater" (%), and "proteinPct" (%), ALWAYS extract the percentage (%) values from the metric tiles (e.g., Body fat: 30.2%, Body water: 51.1%, Protein: 16.4%), NOT the kg weights listed in the bottom "Body composition (kg)" ring chart.
+4. Exact Field Units:
+   - "weight": Body weight in kg (e.g., 101.0).
+   - "bmi": BMI value (e.g., 31.9).
+   - "bodyFat": Body fat percentage in % (e.g., 30.2).
+   - "skeletalMuscle": Skeletal muscle mass in kg (e.g., 38.0). If not shown on the screen (e.g. the 8-tile "Weight" view), return null.
+   - "visceralFat": Visceral fat level (e.g., 17.5).
+   - "bmr": Basal metabolic rate in kcal/d as a whole integer (e.g., "2.096 kcal/d" -> 2096).
+   - "bodyWater": Body water percentage in % (e.g., 51.1).
+   - "boneMineral": Bone mineral content in kg (e.g., 2.30).
+   - "proteinPct": Protein percentage in % (e.g., 16.4).
+   - "muscleMass": Muscle mass in kg (e.g., 68.1).
+Do not include markdown code fences.`;
+
+  const parts = [{ text: systemInstruction }];
+  for (const dataUrl of images) {
+    const base64Match = dataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+    if (base64Match) {
+      parts.push({
+        inline_data: {
+          mime_type: base64Match[1],
+          data: base64Match[2]
+        }
+      });
+    }
+  }
+
+  const cleanModel = (model || 'gemini-3.1-pro-preview').replace(/^models\//, '');
+  const candidateModels = [
+    cleanModel,
+    ...FALLBACK_GEMINI_MODELS.filter(m => m !== cleanModel)
+  ];
+
+  let response = null;
+  let lastErrText = '';
+  let usedModel = cleanModel;
+
+  for (const candidate of candidateModels) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:generateContent?key=${encodeURIComponent(cleanKey)}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (res.ok) {
+      response = res;
+      usedModel = candidate;
+      break;
+    }
+
+    lastErrText = await res.text();
+    if (res.status !== 404) {
+      break;
+    }
+  }
+
+  if (!response || !response.ok) {
+    let readableMsg = lastErrText.slice(0, 200);
+    try {
+      const parsedErr = JSON.parse(lastErrText);
+      if (parsedErr?.error?.message) readableMsg = parsedErr.error.message;
+    } catch {
+      // keep raw slice
+    }
+    throw new Error(`Gemini API Error: ${readableMsg}`);
+  }
+
+  const data = await response.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const cleaned = rawText.replace(/```json|```/g, '').trim();
+  const parsed = JSON.parse(cleaned);
+
+  const toNum = (val, decimals = 1, isBmr = false) => {
+    if (val === null || val === undefined || val === '') return null;
+    const normalized = String(val).trim().replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+    let n = Number(normalized);
+    if (isNaN(n) || n <= 0) return null;
+    if (isBmr && n < 10) {
+      n = n * 1000;
+    }
+    const factor = Math.pow(10, decimals);
+    return Math.round(n * factor) / factor;
+  };
+
+  return {
+    weight: toNum(parsed.weight, 1),
+    bmi: toNum(parsed.bmi, 1),
+    bodyFat: toNum(parsed.bodyFat, 1),
+    skeletalMuscle: toNum(parsed.skeletalMuscle, 1),
+    visceralFat: toNum(parsed.visceralFat, 1),
+    bmr: toNum(parsed.bmr, 0, true),
+    bodyWater: toNum(parsed.bodyWater, 1),
+    boneMineral: toNum(parsed.boneMineral, 2),
+    proteinPct: toNum(parsed.proteinPct, 1),
+    muscleMass: toNum(parsed.muscleMass, 1),
+    usedModel
+  };
+}
+
+/**
  * Smart Offline Natural Language Parser Fallback
  * Parses strings like "250g chicken breast, 150g white rice, 2 whole eggs, 1 tbsp olive oil"
  */

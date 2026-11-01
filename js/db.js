@@ -180,6 +180,7 @@ export function createEmptyDailyRecord(date) {
     soreness: null, // 1-5
     steps: null,
     isTrainingDay: false,
+    trainingCalories: 0,
     fastingStartedAt: null,
     notes: '',
     updatedAt: Date.now()
